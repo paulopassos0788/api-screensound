@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ScreenSound.API.Requests;
 using ScreenSound.Banco;
 using ScreenSound.Modelos;
+using ScreenSound.Shared.Modelos.Modelos;
 
 namespace ScreenSound.API.Endpoints;
 
@@ -36,7 +37,11 @@ public static class MusicasExtensions
                 return Results.NotFound("Artista não encontrado");
             }
 
-            var musica = new Musica(musicaRequest.nome, artista, musicaRequest.anoLancamento);
+            var musica = new Musica(musicaRequest.nome, artista, musicaRequest.anoLancamento)
+            {
+                Generos = musicaRequest.Generos is not null ? GeneroRequestConverter(musicaRequest.Generos) : new List<Genero>()
+            };
+            
             dalMusica.Adicionar(musica);
             return Results.Ok();
         });
@@ -64,5 +69,31 @@ public static class MusicasExtensions
             dal.Atualizar(musicaAAtualizar);
             return Results.Ok();
         });
+    }
+
+    private static ICollection<Genero> GeneroRequestConverter(ICollection<GeneroRequest> generos, DAL<Genero> dalGenero)
+    {
+        var listaDeGeneros = new List<Genero>();
+
+        foreach (var item in generos)
+        {
+            var entity = RequestToEntity(item);
+            var genero = dalGenero.RecuperarPor(g => g.Nome.ToUpper().Equals(item.nome.ToUpper()));
+
+            if (genero is not null)
+            {
+                listaDeGeneros.Add(genero);
+            }
+            else
+            {
+                listaDeGeneros.Add(entity);
+            }
+        }
+        return listaDeGeneros;
+    }
+
+    private static Genero RequestToEntity(GeneroRequest genero)
+    {
+        return new Genero() { Nome = genero.nome, Descricao = genero.descricao };
     }
 }
